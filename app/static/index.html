@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>PathoLens Viewer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/openseadragon.min.js"></script>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; display: flex; height: 100vh; }
+  #viewer { flex: 3; background: #111; }
+  #sidebar { flex: 1; padding: 16px; overflow-y: auto; background: #fafafa; border-left: 1px solid #ddd; }
+  h2 { margin-top: 0; font-size: 16px; }
+  .stat { margin-bottom: 10px; }
+  .stat-label { font-size: 12px; color: #666; }
+  .stat-value { font-size: 20px; font-weight: 600; }
+  .toggle-btn { padding: 8px 12px; margin-bottom: 12px; cursor: pointer; }
+  #region-info { margin-top: 16px; padding: 10px; background: #eee; border-radius: 6px; font-size: 13px; }
+  .disclaimer { font-size: 11px; color: #999; margin-top: 20px; line-height: 1.4; }
+  table { width: 100%; font-size: 12px; border-collapse: collapse; margin-top: 8px; }
+  td { padding: 3px 4px; border-bottom: 1px solid #eee; }
+</style>
+</head>
+<body>
+
+<div id="viewer"></div>
+
+<div id="sidebar">
+  <h2>PathoLens</h2>
+  <button class="toggle-btn" onclick="toggleHeatmap()">Toggle heatmap overlay</button>
+
+  <div class="stat">
+    <div class="stat-label">Tissue coverage</div>
+    <div class="stat-value" id="tissue-pct">—</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Tumor area (% of tissue)</div>
+    <div class="stat-value" id="tumor-pct">—</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Tiles analyzed</div>
+    <div class="stat-value" id="tiles-analyzed">—</div>
+  </div>
+
+  <h2>Top suspicious regions</h2>
+  <table id="region-table"><tbody></tbody></table>
+
+  <div id="region-info">Click on the image to inspect a region.</div>
+
+  <div class="disclaimer">
+    AI-assisted research/educational prototype. Not a diagnostic tool and
+    not a substitute for review by a qualified pathologist.
+  </div>
+</div>
+
+<script>
+  let showingHeatmap = false;
+  let baseViewer;
+
+  function toggleHeatmap() {
+    showingHeatmap = !showingHeatmap;
+    baseViewer.open({
+      type: 'image',
+      url: showingHeatmap ? '/api/heatmap' : '/api/image'
+    });
+  }
+
+  baseViewer = OpenSeadragon({
+    id: "viewer",
+    prefixUrl: "https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/images/",
+    tileSources: { type: 'image', url: '/api/image' },
+    showNavigator: true,
+  });
+
+  baseViewer.addHandler('canvas-click', function(event) {
+    const webPoint = event.position;
+    const viewportPoint = baseViewer.viewport.pointFromPixel(webPoint);
+    const imagePoint = baseViewer.viewport.viewportToImageCoordinates(viewportPoint);
+
+    fetch(`/api/region?y=${Math.round(imagePoint.y)}&x=${Math.round(imagePoint.x)}`)
+      .then(r => r.json())
+      .then(data => {
+        document.getElementById('region-info').innerHTML =
+          `<b>Region (${data.x}, ${data.y})</b><br>Tumor probability: ${(data.probability * 100).toFixed(1)}%`;
+      });
+  });
+
+  fetch('/api/stats').then(r => r.json()).then(stats => {
+    if (stats.error) return;
+    document.getElementById('tissue-pct').textContent = stats.tissue_coverage_percent + '%';
+    document.getElementById('tumor-pct').textContent = stats.tumor_area_percent_of_tissue + '%';
+    document.getElementById('tiles-analyzed').textContent = stats.num_tiles_analyzed;
+
+    const tbody = document.querySelector('#region-table tbody');
+    stats.top_suspicious_regions.forEach(r => {
+      const row = document.createElement('tr');
+      row.innerHTML = `<td>(${r.x}, ${r.y})</td><td>${(r.probability * 100).toFixed(1)}%</td>`;
+      tbody.appendChild(row);
+    });
+  });
+</script>
+
+</body>
+</html>
