@@ -86,3 +86,17 @@ is the intended bridge between the existing skill set and the new domain.
   testing.
 - No clinical validation. This is explicitly a research/educational
   prototype, not a diagnostic tool.
+- **Observed on the actual synthetic mosaic output**: the tissue-detection
+  mask and the tumor-probability heatmap don't fully agree with each other.
+  Because the mosaic is a checkerboard of independent real patches, many
+  tiles are only partially tissue at their edges. `tissue_detection.py`'s
+  tile filter (`min_tissue_fraction=0.1`) is permissive enough to let a lot
+  of these partial-tissue tiles through to the classifier, which was never
+  trained to reason about "how much of this patch is real tissue" — only
+  tumor-vs-normal on whatever content it's given. The result: some
+  high-probability (red/orange) heatmap regions land in areas the tissue
+  mask considers mostly background. On a real WSI, with large contiguous
+  tissue regions instead of a patch checkerboard, this disagreement would
+  be far less pronounced — it's a genuine artifact of the synthetic-mosaic
+  scope decision, not a bug in either the tissue detector or the
+  classifier individually.
