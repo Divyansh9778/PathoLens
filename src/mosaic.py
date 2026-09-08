@@ -50,14 +50,19 @@ def build_mosaic(x_path, grid_size=20, patch_size=96, shuffle=True, seed=0):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_dir", default="data")
+    parser.add_argument("--split", default="test",
+                         help="Which PCam split's patches to stitch into the "
+                              "mosaic (torchvision naming: train/val/test).")
     parser.add_argument("--grid_size", type=int, default=20)
     parser.add_argument("--out", default="outputs/synthetic_wsi.png")
     args = parser.parse_args()
 
-    mosaic = build_mosaic(
-        f"{args.data_dir}/camelyonpatch_level_2_split_test_x.h5",
-        grid_size=args.grid_size,
-    )
+    # torchvision's PCAM(download=True) stores files under a 'pcam/'
+    # subfolder of whatever root you give it - not flat under data_dir
+    # directly. See dataset.py's get_pcam_dataset for the same convention.
+    x_path = f"{args.data_dir}/pcam/camelyonpatch_level_2_split_{args.split}_x.h5"
+
+    mosaic = build_mosaic(x_path, grid_size=args.grid_size)
     cv2.imwrite(args.out, cv2.cvtColor(mosaic, cv2.COLOR_RGB2BGR))
     print(f"Built {mosaic.shape[1]}x{mosaic.shape[0]} synthetic mosaic -> {args.out}")
 
