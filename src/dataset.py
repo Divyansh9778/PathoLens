@@ -1,62 +1,53 @@
 """
 PatchCamelyon (PCam) dataset loading and preprocessing.
 
-PCam ships as .h5 files (x: images, y: labels). Download from:
-https://github.com/basveeling/pcam
+Uses torchvision's built-in PCAM dataset class, which handles downloading,
+extracting, and reading the underlying HDF5 files internally — no manual
+h5py file handling needed.
 
-Expected files in data/:
-    camelyonpatch_level_2_split_train_x.h5
-    camelyonpatch_level_2_split_train_y.h5
-    camelyonpatch_level_2_split_valid_x.h5
-    camelyonpatch_level_2_split_valid_y.h5
-    camelyonpatch_level_2_split_test_x.h5
-    camelyonpatch_level_2_split_test_y.h5
+Splits (torchvision's naming, not the original PCam repo's):
+    "train" - 262,144 patches, ~6.8GB (not used in this project - see README
+               scope decisions; too large for a 10-day timeline)
+    "val"   - 32,768 patches, ~800MB (used here as our *training* set)
+    "test"  - 32,768 patches, ~800MB (used here as our *validation* set)
+
+Yes, this means our "train" data is technically PCam's "val" split, and our
+"val" data is PCam's "test" split. That's a deliberate, documented tradeoff
+(see README) — not a bug.
 """
 
-import h5py
 import torch
-from torch.utils.data import Dataset
 from torchvision import transforms
+from torchvision.datasets import PCAM
 
 
-class PCamDataset(Dataset):
-    def __init__(self, x_path, y_path, transform=None, subset_size=None):
-        self.x_path = x_path
-        self.y_path = y_path
-        self.transform = transform
+def get_pcam_dataset(data_dir, split, train, subset_size=None, download=True):
+    """
+    data_dir: root folder passed to torchvision (it manages its own
+              'pcam/' subfolder inside this)
+    split: one of "train", "val", "test" (torchvision's naming)
+    train: whether to apply training augmentations or eval-only transforms
+    subset_size: if set, wraps the dataset in a Subset of this many samples
+    """
+    dataset = PCAM(
+        root=data_dir,
+        split=split,
+        transform=get_transforms(train=train),
+        download=download,
+    )
 
-        with h5py.File(self.x_path, "r") as f:
-            self.length = f["x"].shape[0]
-        if subset_size is not None:
-            self.length = min(self.length, subset_size)
+    if subset_size is not None and subset_size < len(dataset):
+        indices = list(range(subset_size))
+        dataset = torch.utils.data.Subset(dataset, indices)
 
-        self._x = None
-        self._y = None
-
-    def _lazy_open(self):
-        # Open h5 files lazily per-worker to avoid multiprocessing issues.
-        if self._x is None:
-            self._x = h5py.File(self.x_path, "r")["x"]
-            self._y = h5py.File(self.y_path, "r")["y"]
-
-    def __len__(self):
-        return self.length
-
-    def __getitem__(self, idx):
-        self._lazy_open()
-        image = self._x[idx]
-        label = int(self._y[idx].reshape(-1)[0])
-
-        if self.transform:
-            image = self.transform(image)
-
-        return image, label
+    return dataset
 
 
 def get_transforms(train=True):
+    # No ToPILImage() here - PCAM already yields PIL Images directly,
+    # unlike the raw numpy arrays the old manual h5py loader returned.
     if train:
         return transforms.Compose([
-            transforms.ToPILImage(),
             transforms.RandomHorizontalFlip(),
             transforms.RandomVerticalFlip(),
             transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1),
@@ -66,7 +57,6 @@ def get_transforms(train=True):
         ])
     else:
         return transforms.Compose([
-            transforms.ToPILImage(),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                   std=[0.229, 0.224, 0.225]),
@@ -74,13 +64,15 @@ def get_transforms(train=True):
 
 
 if __name__ == "__main__":
-    # Quick sanity check once data is downloaded
-    ds = PCamDataset(
-        "data/camelyonpatch_level_2_split_train_x.h5",
-        "data/camelyonpatch_level_2_split_train_y.h5",
-        transform=get_transforms(train=False),
-        subset_size=1000,
-    )
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--data_dir", default="data")
+    parser.add_argument("--split", default="test",
+                         help="train/val/test - use 'test' or 'val' for a "
+                              "quick check, 'train' will trigger a ~6.8GB download")
+    args = parser.parse_args()
+
+    ds = get_pcam_dataset(args.data_dir, split=args.split, train=False, subset_size=1000)
     print(f"Dataset size: {len(ds)}")
     img, label = ds[0]
     print(f"Sample image shape: {img.shape}, label: {label}")

@@ -10,7 +10,7 @@ from sklearn.metrics import (
 import matplotlib.pyplot as plt
 import numpy as np
 
-from dataset import PCamDataset, get_transforms
+from dataset import get_pcam_dataset
 from model import build_model
 
 
@@ -34,14 +34,17 @@ def main():
     parser.add_argument("--data_dir", default="data")
     parser.add_argument("--weights", default="outputs/model.pth")
     parser.add_argument("--subset_size", type=int, default=5000)
+    parser.add_argument("--split", default="test",
+                         help="Held-out split to evaluate on. Default 'test' "
+                              "matches train.py's default --val_split, so this "
+                              "reports the same metric train.py tracked, plus "
+                              "precision/recall/AUC it doesn't compute live.")
     args = parser.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    test_ds = PCamDataset(
-        f"{args.data_dir}/camelyonpatch_level_2_split_test_x.h5",
-        f"{args.data_dir}/camelyonpatch_level_2_split_test_y.h5",
-        transform=get_transforms(train=False),
+    test_ds = get_pcam_dataset(
+        args.data_dir, split=args.split, train=False,
         subset_size=args.subset_size,
     )
     test_loader = DataLoader(test_ds, batch_size=64, shuffle=False, num_workers=2)

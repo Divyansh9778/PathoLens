@@ -6,7 +6,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from dataset import PCamDataset, get_transforms
+from dataset import get_pcam_dataset
 from model import build_model
 
 
@@ -62,21 +62,28 @@ def main():
     parser.add_argument("--subset_size", type=int, default=20000,
                          help="Use a subset to keep training fast on limited compute")
     parser.add_argument("--out", default="outputs/model.pth")
+    parser.add_argument("--train_split", default="val",
+                         help="Which PCam split to train on (torchvision naming: "
+                              "train/val/test). Official 'train' is ~6.8GB; "
+                              "'val' (32,768 patches, ~800MB) is the lighter, "
+                              "documented choice for this project — see README "
+                              "scope decisions. Default matches what the setup "
+                              "steps actually download.")
+    parser.add_argument("--val_split", default="test",
+                         help="Which split to validate on during training. "
+                              "Default 'test' avoids overlapping with "
+                              "--train_split's default of 'val'.")
     args = parser.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
-    train_ds = PCamDataset(
-        f"{args.data_dir}/camelyonpatch_level_2_split_train_x.h5",
-        f"{args.data_dir}/camelyonpatch_level_2_split_train_y.h5",
-        transform=get_transforms(train=True),
+    train_ds = get_pcam_dataset(
+        args.data_dir, split=args.train_split, train=True,
         subset_size=args.subset_size,
     )
-    val_ds = PCamDataset(
-        f"{args.data_dir}/camelyonpatch_level_2_split_valid_x.h5",
-        f"{args.data_dir}/camelyonpatch_level_2_split_valid_y.h5",
-        transform=get_transforms(train=False),
+    val_ds = get_pcam_dataset(
+        args.data_dir, split=args.val_split, train=False,
         subset_size=args.subset_size // 5,
     )
 
