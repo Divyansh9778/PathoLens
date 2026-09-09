@@ -102,26 +102,26 @@ Interactive viewer (FastAPI + OpenSeadragon: pan/zoom, heatmap overlay,
 ```
 histo-classifier/
 ├── src/
-│   ├── dataset.py              # PCam loading & preprocessing
+│   ├── dataset.py             # PCam loading & preprocessing
 │   ├── model.py                # ResNet18 classifier definition
-│   ├── train.py                # training loop
+│   ├── train.py                 # training loop
 │   ├── evaluate.py             # metrics: precision/recall/F1/AUC/confusion matrix
 │   ├── gradcam.py              # Grad-CAM implementation
 │   ├── tissue_detection.py     # Otsu-based tissue vs. background segmentation
-│   ├── mosaic.py               # builds the synthetic large "WSI-scale" image
+│   ├── mosaic.py                # builds the synthetic large "WSI-scale" image
 │   ├── tiling_inference.py     # tiling + batched inference + heatmap stitching
 │   ├── quantification.py       # tissue %, tumor %, suspicious region ranking
 │   └── benchmark.py            # single vs batched, CPU vs GPU timing comparison
 ├── app/
-│   ├── server.py               # FastAPI backend: serves image/heatmap/regions
+│   ├── server.py                # FastAPI backend: serves image/heatmap/regions
 │   ├── static/
-│   │   └── index.html          # OpenSeadragon viewer frontend
+│   │   └── index.html           # OpenSeadragon viewer frontend
 │   └── demo_app.py             # (fallback) Streamlit demo — see Fallback Plan
 ├── notebooks/                  # exploration notebooks
 ├── data/                       # (not committed — see .gitignore)
 ├── outputs/                    # trained weights, heatmaps, benchmark results
 ├── ARCHITECTURE.md             # pipeline + design decisions in more depth
-└── PROGRESS.md                 # daily build log
+└── PROGRESS.md                  # daily build log
 ```
 
 ## Setup
@@ -205,6 +205,10 @@ around tissue-mask/heatmap disagreement on the synthetic mosaic.
 
 Core classifier, evaluation, tissue detection, tiling/heatmap pipeline,
 quantification, and performance benchmarking are complete and verified
-against real data and a real trained model. Interactive viewer
-(FastAPI + OpenSeadragon) is built but not yet run end-to-end — see
-[PROGRESS.md](PROGRESS.md) for the daily build log.
+against real data and a real trained model. The FastAPI backend for the
+interactive viewer is complete and verified — all four endpoints
+(`/api/stats`, `/api/image`, `/api/heatmap`, `/api/region`) tested with
+real HTTP requests against the live server. The OpenSeadragon browser
+frontend (`app/static/index.html`) is built but has not yet been visually
+tested in an actual browser — see [PROGRESS.md](PROGRESS.md) for the
+daily build log.

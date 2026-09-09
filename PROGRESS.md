@@ -114,6 +114,69 @@ after the next few steps also finish.
 
 ## Day 2
 
+Picked back up to tackle the last deferred piece: the FastAPI +
+OpenSeadragon interactive viewer. This session was almost entirely an
+infrastructure fight again — Kaggle's idle-timeout session wipes, same
+root cause as yesterday's Colab problems — but ended with the backend
+fully verified.
+
+**Kaggle workflow lessons (should have known from Day 1, learned properly
+this time):**
+- [x] Confirmed: every idle timeout wipes `/kaggle/working` completely —
+      code, installed packages, everything. This happens regardless of
+      whether it's the same notebook or a new one; there's no setting to
+      prevent it on the free tier
+- [x] Found the actual fix: attach a notebook's own saved output as an
+      **Input** to itself (Add Input → search notebook name → click +).
+      This is a one-time setup per notebook — once attached, every future
+      session (even after a wipe) can pull the last saved model/data back
+      instantly via a simple `cp`, no retraining, no re-attaching
+- [x] Learned the difference between the live session's file browser
+      (mixes Input + Output, confusing) and a saved **Version's dedicated
+      page** (clean Output tab, proper download buttons) — the latter is
+      the right place to download files from, not the live editor sidebar
+- [x] Real confirmed path for this project's attached input:
+      `/kaggle/input/notebooks/sharmaji78/patholens/PathoLens/outputs/`
+- [x] Learned: copying the whole project folder from the attached Input
+      (`cp -r /kaggle/input/.../PathoLens /kaggle/working/PathoLens`) is
+      faster and avoids GitHub entirely when recovering from a session
+      wipe — only `pip install` still needs to rerun each time, which is
+      unavoidable on the free tier without a custom Docker image
+
+**Bug fixes:**
+- [x] Fixed `app/server.py` — was hardcoded to look for `model.pth`,
+      needed to be `model_v2.pth` to match the actual trained checkpoint
+      filename
+- [x] Fixed a bad git commit where the author email was a leftover
+      placeholder (`your.real@email.com`) instead of the real one — set
+      global git config properly and amended the commit so the pushed
+      history is correct
+
+**Downloaded model + mosaic from Kaggle to local machine** — learned that
+`torch.save()` output is itself a zip-structured file, so Kaggle's
+`.zip`-suffixed download IS the `.pth` file, not a wrapper around it;
+unzipping it was an unnecessary extra step (just rename `.zip` → `.pth`).
+Ultimately decided not to run the viewer locally at all (no local
+torch install) and instead verified everything inside Kaggle directly.
+
+**FastAPI backend — fully verified, all four endpoints tested with real
+requests against the live server (not just "the code doesn't crash"):**
+- [x] `/api/stats` → 200, real quantification JSON (tissue %, tumor %,
+      ranked suspicious regions)
+- [x] `/api/image` → 200, correct PNG bytes matching the actual mosaic
+      file size exactly
+- [x] `/api/heatmap` → 200, correct PNG bytes for the heatmap overlay
+- [x] `/api/region?y=..&x=..` → 200, returns a real probability for a
+      specific clicked coordinate — this is the endpoint the frontend's
+      click-to-inspect feature depends on
+
+**Honest status**: backend is genuinely done and tested. The actual
+OpenSeadragon browser frontend (`app/static/index.html`) has NOT been
+visually tested — the API it depends on is now proven solid, but nobody
+has actually loaded the page and clicked around in a real browser yet.
+Don't overclaim this as "viewer complete" — it's "backend complete,
+frontend built but visually unverified."
+
 ## Day 3
 
 ## Day 4
