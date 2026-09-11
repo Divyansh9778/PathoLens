@@ -49,9 +49,19 @@ def compute_quantification(large_image, heatmap, tile_probs, tumor_threshold=0.1
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--weights", default="outputs/model.pth")
+    parser.add_argument("--weights", default="outputs/model_v3.pth")
     parser.add_argument("--image", required=True)
     parser.add_argument("--out", default="outputs/quantification.json")
+    parser.add_argument("--threshold", type=float, default=0.15,
+                         help="Tumor classification threshold. Default 0.15 "
+                              "was tuned for model_v2's probability "
+                              "distribution. model_v3 was trained for higher "
+                              "recall and assigns higher probability to more "
+                              "borderline tiles, so a higher threshold "
+                              "(e.g. 0.3) may give a more comparable "
+                              "tumor-area-percent reading - always re-check "
+                              "this per model version rather than assuming "
+                              "the old default still fits.")
     args = parser.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -62,7 +72,8 @@ def main():
     img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
 
     heatmap, tile_probs = tile_and_predict(model, img_rgb, device)
-    stats = compute_quantification(img_rgb, heatmap, tile_probs)
+    stats = compute_quantification(img_rgb, heatmap, tile_probs,
+                                    tumor_threshold=args.threshold)
 
     with open(args.out, "w") as f:
         json.dump(stats, f, indent=2)

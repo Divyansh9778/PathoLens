@@ -52,7 +52,10 @@ def load_and_run():
 
     heatmap, tile_probs = tile_and_predict(model, img_rgb, device)
     overlay_and_save(img_rgb, heatmap, os.path.join(OUTPUTS_DIR, "heatmap_overlay.png"))
-    stats = compute_quantification(img_rgb, heatmap, tile_probs)
+    # threshold 0.3 (not 0.15) - v3 was trained for higher recall and
+    # assigns higher probability to more borderline tiles than v2, so
+    # the old 0.15 threshold overstates tumor area with this model
+    stats = compute_quantification(img_rgb, heatmap, tile_probs, tumor_threshold=0.3)
 
     STATE["image"] = image_path
     STATE["heatmap"] = os.path.join(OUTPUTS_DIR, "heatmap_overlay.png")
