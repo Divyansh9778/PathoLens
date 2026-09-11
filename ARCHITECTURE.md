@@ -77,6 +77,25 @@ is the intended bridge between the existing skill set and the new domain.
 
 ## Known limitations (state these honestly in an interview)
 
+- **A tuned classification threshold does not automatically transfer
+  between model versions.** The 0.15 threshold was tuned specifically for
+  model_v2's probability distribution. When model_v3 (trained for
+  substantially higher recall, per the Results section) was deployed with
+  that same 0.15 threshold unchanged, `tumor_area_percent_of_tissue` read
+  83.12% — misleadingly high, because v3 assigns higher probability to
+  more borderline tiles by design, so an old threshold calibrated for a
+  different model's distribution over-flags. Re-running with a threshold
+  re-tuned for v3 (0.3) brought this to 71.51%, a large and expected drop.
+  There is no ground-truth label for the synthetic mosaic, so 71.51%
+  itself isn't validated as "correct" — only that it moved in the
+  expected direction once the threshold mismatch was fixed. **Lesson**:
+  any classification/quantification threshold is a property of the
+  specific model checkpoint it was tuned against, not a fixed constant —
+  it must be re-validated (not just carried over) whenever the model
+  changes, even to a strictly better version. `quantification.py` now
+  takes `--threshold` as an explicit CLI argument for exactly this
+  reason, rather than a silent hardcoded default.
+
 - Trained on PatchCamelyon (lymph node metastasis patches), not directly
   on whatever tissue type/stain a specific deployment would see — a real
   system would need retraining/validation per tissue type.
