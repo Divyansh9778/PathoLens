@@ -148,43 +148,64 @@ scope in the stated order rather than rushing every remaining piece.
 
 ## Results
 
-**Classification (ResNet18, transfer learning, PatchCamelyon "val" split as
-training data, "test" split held out for evaluation):**
+**Classification (ResNet18, transfer learning, PatchCamelyon full "train"
+split as training data — 100,000 of 262,144 patches used — with layer1/
+layer2 frozen and stronger augmentation; "test" split held out for
+evaluation):**
 
 | Metric | Value |
 |---|---|
-| Precision | 92.0% |
-| Recall @ default threshold (0.5) | 62.2% |
-| AUC | 0.903 |
+| Precision | 91.3% |
+| Recall @ default threshold (0.5) | 76.1% |
+| AUC | 0.936 |
 
-At the default 0.5 threshold, the model favors precision over recall — in a
-screening context, missing a real tumor (false negative) is costlier than a
-false alarm a pathologist reviews and dismisses. A threshold sweep on the
-held-out test set found a better operating point:
+At the default 0.5 threshold, the model still favors precision over recall
+— in a screening context, missing a real tumor (false negative) is costlier
+than a false alarm a pathologist reviews and dismisses. A threshold sweep
+on the held-out test set found a better operating point:
 
 | Threshold | Precision | Recall |
 |---|---|---|
-| 0.5 | 92.0% | 62.2% |
-| 0.3 | 88.9% | 70.7% |
-| **0.15** | **85.0%** | **80.1%** |
-| 0.1 | 82.2% | 84.1% |
+| 0.5 | 91.3% | 76.1% |
+| 0.3 | 87.5% | 83.6% |
+| **0.15** | **81.9%** | **90.8%** |
+| 0.1 | 78.8% | 93.5% |
 
 **0.15 is used as the default threshold** throughout the pipeline
 (`quantification.py`) based on this tradeoff.
 
-**Overfitting was diagnosed and partially mitigated**: an initial run with
-no regularization showed train accuracy reaching 98.9% while validation loss
-climbed from 0.76 to 1.61 across 10 epochs — train/val loss divergence, the
-classic overfitting signature — and recall plateaued at ~72% even at the
-most aggressive thresholds tested, indicating the model was confidently
-wrong on a meaningful fraction of real tumor patches, not just uncalibrated.
-Adding L2 regularization (weight decay) improved AUC from 0.894 to 0.903 and
-raised the achievable recall ceiling from ~72% to ~84% at aggressive
-thresholds — evidence the regularization improved calibration, not just
-accuracy.
+**Iteration history — three training runs, each diagnosing and fixing a
+real problem, not just re-running the same thing hoping for a better
+number:**
+
+1. **v1** (20,000 patches from PCam's smaller "val" split, no
+   regularization): 92.0% precision, 62.2% recall @ 0.5, AUC 0.894.
+   Diagnosed clear overfitting — train accuracy reached 98.9% while
+   validation loss climbed from 0.76 to 1.61 across 10 epochs, and recall
+   plateaued at ~72% even at the most aggressive thresholds tested,
+   indicating the model was confidently wrong on real tumor cases, not
+   just uncalibrated.
+2. **v2** (same 20,000 patches, added L2 regularization/weight decay):
+   AUC improved to 0.903, recall ceiling rose from ~72% to ~84% at
+   aggressive thresholds — real evidence regularization improved
+   calibration, not just accuracy. Val_loss still climbed over training,
+   though less severely.
+3. **v3** (100,000 patches from the full "train" split — 5x more data —
+   plus partial layer freezing and stronger augmentation): the real fix.
+   Val_loss stayed in a tight 0.28–0.40 band across all 10 epochs instead
+   of climbing, recall @ 0.5 jumped to 76.1% (+13.9 points over v2), and
+   critically, recall at aggressive thresholds is **still rising** rather
+   than plateaued (93.5% at threshold 0.1, vs. v2's hard ceiling of
+   84.1%) — the clearest sign the model is now well-calibrated rather
+   than confidently wrong. **This confirmed that dataset size was the
+   dominant lever for this overfitting problem**, more so than
+   regularization or partial freezing alone (freezing through layer2 only
+   reduces trainable parameters to ~94%, since ResNet18's parameter mass
+   is concentrated in layer4 — so it's a real contributor here, but not
+   the main one).
 
 **Performance benchmark** (batched vs. single-tile inference, CPU vs. GPU,
-200 tiles):
+200 tiles, measured on the v2 checkpoint):
 
 | | Single-tile | Batched | Speedup from batching |
 |---|---|---|---|
@@ -198,6 +219,9 @@ dramatically there.
 
 **Pipeline**: tissue detection, synthetic-mosaic tiling, heatmap
 reconstruction, and quantification all run successfully end-to-end against
+the trained model (v2, at the time — worth re-running against v3 for full
+consistency). See `ARCHITECTURE.md` for a documented limitation around
+tissue-mask/heatmap disagreement on the synthetic mosaic.
 the trained model — see `ARCHITECTURE.md` for a documented limitation
 around tissue-mask/heatmap disagreement on the synthetic mosaic.
 

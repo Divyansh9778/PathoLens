@@ -35,11 +35,11 @@ def load_and_run():
     viewer has something to show. Extend with an upload endpoint if time
     allows.
     """
-    weights_path = os.path.join(OUTPUTS_DIR, "model_v2.pth")
+    weights_path = os.path.join(OUTPUTS_DIR, "model_v3.pth")
     image_path = os.path.join(OUTPUTS_DIR, "synthetic_wsi.png")
 
     if not (os.path.exists(weights_path) and os.path.exists(image_path)):
-        print("Model weights (model_v2.pth) or synthetic_wsi.png not found — "
+        print("Model weights (model_v3.pth) or synthetic_wsi.png not found — "
               "run train.py and mosaic.py first. Viewer will show no data.")
         return
 
