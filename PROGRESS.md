@@ -179,6 +179,68 @@ frontend built but visually unverified."
 
 ## Day 3
 
+Focused entirely on fixing the overfitting diagnosed on Day 1-2. Real
+before/after comparison, not just re-running and hoping for a better
+number.
+
+**Kaggle workflow — finally solved properly, not just worked around:**
+- [x] Realized the fast recovery cell (copy from attached Input) doesn't
+      pull code changes from GitHub — had to add `git fetch` +
+      `git reset --hard origin/main` as a standing step, since a plain
+      `git pull` broke on a diverged-history conflict from an earlier
+      force-push
+- [x] Fixed a real bug in the recovery cell itself: `cp -r` (or
+      `shutil.copytree`) into an already-existing target folder nests
+      instead of replacing — switched to always deleting the target
+      first. This bug had gotten baked into a saved Version at one
+      point (nested `PathoLens/PathoLens/`); fixed by re-saving after
+      cleaning it up
+- [x] Set up a persistent package cache (`outputs/packages`, installed
+      via `pip install --target=`) so `fastapi`/`uvicorn` don't need
+      reinstalling every session — cut recovery time from ~1 minute to
+      under 30 seconds. Learned the hard way not to `--target` install
+      torch/torchvision too, since Kaggle's base image already has them
+      and duplicating them wastes ~1GB+ for nothing
+
+**Overfitting fix — three real levers, tested together:**
+- [x] Added partial backbone freezing to `model.py`
+      (`freeze_until="layer1"/"layer2"/"layer3"`) — found via a
+      parameter-count check that even the most aggressive setting only
+      cuts trainable params to ~75%, since ResNet18's parameter mass is
+      concentrated in `layer4`. Useful but not a silver bullet on its
+      own, worth knowing precisely rather than assuming
+- [x] Strengthened training augmentation in `dataset.py` — added full
+      90° rotations (label-preserving for histopathology, no canonical
+      orientation) and heavier colour/stain jitter
+- [x] Downloaded PCam's full "train" split (6.8GB, ~65 seconds on
+      Kaggle — the download we avoided on Day 1 to save time turned out
+      to be cheap after all) and trained on 100,000 patches instead of
+      20,000
+- [x] Trained v3 with all three changes together: `--train_split train
+      --subset_size 100000 --freeze_until layer2`
+
+**Result: the clearest win of the project.** val_loss stayed flat in a
+0.28-0.40 band across all 10 epochs (v2's climbed from 0.62 to 1.2+).
+Recall @ 0.5 threshold reached **76.1%** (v1 and v2 were both ~62.2% at
+this threshold) — a genuine +13.9 point improvement with almost no
+precision cost (91.3% vs 92.0%). AUC improved to **0.936** (from 0.903).
+Most importantly, v2's recall had plateaued at 84.1% even at the most
+aggressive threshold tested — v3's recall was **still climbing** at the
+same threshold (93.5%), meaning the model is now generalizing, not just
+being confidently wrong less often. **Confirmed dataset size was the
+dominant lever** — more so than regularization (Day 2) or freezing/
+augmentation alone.
+
+**Updated `server.py` to point at `model_v3.pth`** as the new best model.
+README Results section rewritten with full v1→v2→v3 iteration history,
+kept rather than deleted, since it's a real demonstration of diagnosing
+a problem and fixing it methodically — better interview material than a
+single clean-looking number would have been.
+
+**Still pending**: re-running `tiling_inference.py`/`quantification.py`/
+the FastAPI viewer against v3 specifically (they were last verified
+against v2).
+
 ## Day 4
 
 ## Day 5
