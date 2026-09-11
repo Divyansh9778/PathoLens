@@ -47,10 +47,19 @@ def get_transforms(train=True):
     # No ToPILImage() here - PCAM already yields PIL Images directly,
     # unlike the raw numpy arrays the old manual h5py loader returned.
     if train:
+        # Stronger augmentation than the original mild flips + slight jitter,
+        # added to combat measured overfitting. Histopathology patches have no
+        # canonical orientation, so full 90-degree rotations and both flips are
+        # label-preserving and effectively multiply the training set. Heavier
+        # colour jitter (plus slight hue shift) simulates the real stain
+        # variation between labs/scanners, which is a well-known source of
+        # distribution shift in digital pathology.
         return transforms.Compose([
             transforms.RandomHorizontalFlip(),
             transforms.RandomVerticalFlip(),
-            transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1),
+            transforms.RandomApply([transforms.RandomRotation((90, 90))], p=0.5),
+            transforms.ColorJitter(brightness=0.25, contrast=0.25,
+                                    saturation=0.25, hue=0.05),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                   std=[0.229, 0.224, 0.225]),

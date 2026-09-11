@@ -59,6 +59,13 @@ def main():
     parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--lr", type=float, default=1e-4)
+    parser.add_argument("--freeze_until", default=None,
+                         choices=[None, "layer1", "layer2", "layer3"],
+                         help="Freeze early ResNet layers to cut trainable "
+                              "parameters and reduce overfitting. Note: even "
+                              "'layer3' only reduces trainable params to ~75%, "
+                              "since ResNet18's parameters are concentrated in "
+                              "layer4 - so this helps but is not a silver bullet.")
     parser.add_argument("--weight_decay", type=float, default=1e-4,
                          help="L2 regularization strength. Added after the first "
                               "real training run showed train_acc reaching 98.9% "
@@ -97,7 +104,12 @@ def main():
     train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True, num_workers=2)
     val_loader = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False, num_workers=2)
 
-    model = build_model(pretrained=True).to(device)
+    model = build_model(pretrained=True, freeze_until=args.freeze_until).to(device)
+
+    from model import count_parameters
+    trainable, total = count_parameters(model)
+    print(f"Trainable parameters: {trainable:,} / {total:,} "
+          f"({100 * trainable / total:.1f}%)")
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
