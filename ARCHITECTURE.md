@@ -90,6 +90,22 @@ python src/tiling_inference.py --weights outputs/model_v3.pth --wsi path/to/slid
 python src/quantification.py --weights outputs/model_v3.pth --wsi path/to/slide.svs --threshold 0.3
 ```
 
+**Re-run with the actual trained model (`model_v3.pth`)**: tissue
+detection again found 31.26% coverage (deterministic, matches the earlier
+random-weights smoke test exactly). The classifier itself flagged 69.14%
+of tissue as tumor, many tiles at 100% confidence. **This number should
+not be read as a real finding.** `CMU-1-Small-Region.svs` is a skin
+tissue cross-section (visible in the region image above), not lymph node
+tissue — a completely different tissue type and staining pattern than
+PatchCamelyon, which the model was exclusively trained on. This is a
+concrete, real illustration of a limitation already noted elsewhere in
+this document ("not directly on whatever tissue type/stain a specific
+deployment would see") — the pipeline is genuinely WSI-format-compatible,
+but the trained classifier's predictions are only meaningful on the
+tissue distribution it was actually trained on. A real deployment would
+need separate training/validation per tissue type, not just format
+compatibility.
+
 **Known scope limit**: `load_wsi_region()` reads a single region at a
 chosen pyramid level, not a full slide-scanning strategy across the whole
 pyramid. A real production slide's level 0 can be tens of thousands of
