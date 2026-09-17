@@ -225,6 +225,24 @@ tissue-mask/heatmap disagreement on the synthetic mosaic.
 the trained model — see `ARCHITECTURE.md` for a documented limitation
 around tissue-mask/heatmap disagreement on the synthetic mosaic.
 
+## Screenshots
+
+The interactive viewer running against the trained model, deployed live on
+a Kaggle GPU session and accessed via a Cloudflare tunnel:
+
+**Mosaic view, with tissue statistics and click-to-inspect:**
+
+![Mosaic view](screenshots/viewer_mosaic_view.png)
+
+**Heatmap overlay, showing per-tile tumor probability:**
+
+![Heatmap view](screenshots/viewer_heatmap_view.png)
+
+The sidebar shows real, live output: 54.24% tissue coverage, 71.51% tumor
+area (at the tuned 0.3 threshold — see Results below for why), and a
+clicked region's tumor probability (88.3% in this example) fetched from
+the `/api/region` endpoint in real time.
+
 ## Status
 
 Core classifier, evaluation, tissue detection, tiling/heatmap pipeline,
