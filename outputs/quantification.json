@@ -1,0 +1,58 @@
+{
+  "tissue_coverage_percent": 54.24,
+  "tumor_area_percent_of_tissue": 71.51,
+  "num_tiles_analyzed": 1328,
+  "num_tiles_above_threshold": 788,
+  "top_suspicious_regions": [
+    {
+      "y": 768,
+      "x": 288,
+      "probability": 1.0
+    },
+    {
+      "y": 672,
+      "x": 960,
+      "probability": 1.0
+    },
+    {
+      "y": 1344,
+      "x": 1776,
+      "probability": 1.0
+    },
+    {
+      "y": 768,
+      "x": 336,
+      "probability": 1.0
+    },
+    {
+      "y": 768,
+      "x": 240,
+      "probability": 0.9999
+    },
+    {
+      "y": 1056,
+      "x": 720,
+      "probability": 0.9999
+    },
+    {
+      "y": 1536,
+      "x": 192,
+      "probability": 0.9999
+    },
+    {
+      "y": 1680,
+      "x": 1728,
+      "probability": 0.9999
+    },
+    {
+      "y": 192,
+      "x": 1008,
+      "probability": 0.9999
+    },
+    {
+      "y": 768,
+      "x": 384,
+      "probability": 0.9999
+    }
+  ]
+}
