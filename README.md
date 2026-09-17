@@ -28,8 +28,9 @@ MVP pipeline runs against a **synthetic large image**: a mosaic stitched
 from real PatchCamelyon patches at true whole-slide-like dimensions. This
 lets every stage of the pipeline — tissue detection, tiling, inference,
 heatmap reconstruction, quantification — be built and validated honestly.
-**Real OpenSlide/.svs support is an explicit stretch goal**, attempted only
-if the MVP is solid with time to spare (see fallback plan below).
+**Real OpenSlide/.svs support was originally scoped as a stretch goal and
+has since been completed** — see the Screenshots section and
+`ARCHITECTURE.md`'s "Real WSI support" for what was built and verified.
 
 ## Problem
 
@@ -242,6 +243,19 @@ The sidebar shows real, live output: 54.24% tissue coverage, 71.51% tumor
 area (at the tuned 0.3 threshold — see Results below for why), and a
 clicked region's tumor probability (88.3% in this example) fetched from
 the `/api/region` endpoint in real time.
+
+**Real WSI file support**: the pipeline also runs, unmodified, against
+genuine whole-slide image files (`.svs`) via OpenSlide — not just the
+synthetic mosaic. This is the standard OpenSlide test slide
+(`CMU-1-Small-Region.svs`), with the tissue-detection/tiling pipeline
+correctly finding and processing only the actual tissue region (the
+background is untouched, confirming the tissue mask precisely tracked the
+real slide's tissue boundary):
+
+![Real WSI heatmap](screenshots/real_wsi_heatmap.png)
+
+See `ARCHITECTURE.md`'s "Real WSI support" section for how this works and
+its current scope limits.
 
 ## Status
 

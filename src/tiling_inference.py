@@ -103,17 +103,38 @@ def overlay_and_save(large_image, heatmap, out_path):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--weights", default="outputs/model.pth")
-    parser.add_argument("--image", required=True,
-                         help="Path to a large image (simulated WSI region)")
+    parser.add_argument("--image", default=None,
+                         help="Path to a plain image file (e.g. the synthetic mosaic)")
+    parser.add_argument("--wsi", default=None,
+                         help="Path to a real whole-slide image file (.svs/.tiff/etc, "
+                              "read via OpenSlide) - alternative to --image. Requires "
+                              "openslide-tools (apt) and openslide-python (pip); see "
+                              "wsi_loader.py.")
+    parser.add_argument("--wsi_level", type=int, default=0,
+                         help="Pyramid level to read when using --wsi. Level 0 is "
+                              "full resolution; for a real production slide (tens of "
+                              "thousands of pixels per side) this could be enormous - "
+                              "pick a higher level or use a small test slide.")
     parser.add_argument("--out", default="outputs/wsi_heatmap.png")
     args = parser.parse_args()
+
+    if not args.image and not args.wsi:
+        parser.error("Provide either --image or --wsi")
+    if args.image and args.wsi:
+        parser.error("Provide only one of --image or --wsi, not both")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = build_model(pretrained=False).to(device)
     model.load_state_dict(torch.load(args.weights, map_location=device))
 
-    img_bgr = cv2.imread(args.image)
-    img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+    if args.wsi:
+        from wsi_loader import load_wsi_region
+        img_rgb = load_wsi_region(args.wsi, level=args.wsi_level)
+        print(f"Loaded real WSI region via OpenSlide: {img_rgb.shape[1]}x{img_rgb.shape[0]} px "
+              f"(level {args.wsi_level})")
+    else:
+        img_bgr = cv2.imread(args.image)
+        img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
 
     heatmap, tile_probs = tile_and_predict(model, img_rgb, device)
     overlay_and_save(img_rgb, heatmap, args.out)

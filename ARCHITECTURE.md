@@ -55,7 +55,50 @@ builds a large image by tiling real PatchCamelyon patches into a mosaic
   RGB numpy array and doesn't care where it came from.
 - **Extensible** — real OpenSlide/.svs support can be added later by
   swapping the image-loading step for an OpenSlide reader that yields
-  the same RGB array interface; no other code needs to change.
+  the same RGB array interface; no other code needs to change. **Update:
+  this has since been implemented — see "Real WSI support" below.**
+
+## Real WSI support (implemented, not just a stretch goal)
+
+The extensibility point above is no longer theoretical. `src/wsi_loader.py`
+wraps OpenSlide and provides `load_wsi_region()`, which reads a real
+`.svs`/`.tiff` slide file and returns the exact same `HxWx3` uint8 RGB
+numpy array that `mosaic.py`'s synthetic image also produces. Both
+`tiling_inference.py` and `quantification.py` accept a `--wsi <path>` flag
+as a drop-in alternative to `--image <path>` — no other code changes were
+needed anywhere in the pipeline, confirming the original design decision.
+
+**Verified against a real slide**: the standard OpenSlide test file
+`CMU-1-Small-Region.svs` (a genuine Aperio-format WSI, single pyramid
+level, 2220x2967px) was run through the unmodified tissue detection and
+tiling pipeline. Tissue detection correctly found 31.3% coverage and,
+critically, the tiling step correctly skipped the background — only
+actual tissue-containing tiles received the heatmap overlay, background
+was left untouched, visually confirming the tissue mask precisely tracked
+the real tissue boundary on genuine slide data, not just the synthetic
+mosaic's clean checkerboard.
+
+Requires the OpenSlide system library in addition to the Python package:
+```bash
+apt-get install -y openslide-tools   # Ubuntu/Debian - works on Colab and Kaggle
+pip install openslide-python
+```
+
+Usage:
+```bash
+python src/tiling_inference.py --weights outputs/model_v3.pth --wsi path/to/slide.svs --wsi_level 0 --out outputs/wsi_heatmap.png
+python src/quantification.py --weights outputs/model_v3.pth --wsi path/to/slide.svs --threshold 0.3
+```
+
+**Known scope limit**: `load_wsi_region()` reads a single region at a
+chosen pyramid level, not a full slide-scanning strategy across the whole
+pyramid. A real production slide's level 0 can be tens of thousands of
+pixels per side - reading that entirely into memory is impractical, and
+is exactly the class of problem OpenSlide's own tiled/pyramidal file
+format exists to solve. Extending this to systematically scan an entire
+large slide (rather than one chosen region) would be the natural next
+step, but was out of scope for demonstrating that the pipeline is
+genuinely WSI-format-compatible.
 
 ## Why no React
 

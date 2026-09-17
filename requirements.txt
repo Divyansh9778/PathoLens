@@ -13,3 +13,6 @@ Pillow
 fastapi
 uvicorn[standard]
 python-multipart
+openslide-python
+# openslide-python also requires the OpenSlide system library:
+#   apt-get install -y openslide-tools   (Ubuntu/Debian, incl. Colab/Kaggle)

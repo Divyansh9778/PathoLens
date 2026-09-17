@@ -50,7 +50,11 @@ def compute_quantification(large_image, heatmap, tile_probs, tumor_threshold=0.1
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--weights", default="outputs/model_v3.pth")
-    parser.add_argument("--image", required=True)
+    parser.add_argument("--image", default=None)
+    parser.add_argument("--wsi", default=None,
+                         help="Path to a real whole-slide image (.svs/.tiff), "
+                              "read via OpenSlide - alternative to --image.")
+    parser.add_argument("--wsi_level", type=int, default=0)
     parser.add_argument("--out", default="outputs/quantification.json")
     parser.add_argument("--threshold", type=float, default=0.15,
                          help="Tumor classification threshold. Default 0.15 "
@@ -64,12 +68,19 @@ def main():
                               "the old default still fits.")
     args = parser.parse_args()
 
+    if not args.image and not args.wsi:
+        parser.error("Provide either --image or --wsi")
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = build_model(pretrained=False).to(device)
     model.load_state_dict(torch.load(args.weights, map_location=device))
 
-    img_bgr = cv2.imread(args.image)
-    img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+    if args.wsi:
+        from wsi_loader import load_wsi_region
+        img_rgb = load_wsi_region(args.wsi, level=args.wsi_level)
+    else:
+        img_bgr = cv2.imread(args.image)
+        img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
 
     heatmap, tile_probs = tile_and_predict(model, img_rgb, device)
     stats = compute_quantification(img_rgb, heatmap, tile_probs,

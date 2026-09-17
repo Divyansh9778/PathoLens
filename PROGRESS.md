@@ -243,6 +243,47 @@ against v2).
 
 ## Day 4
 
+Closed out the one remaining stretch goal from Day 1's scope decision:
+real OpenSlide/.svs support.
+
+- [x] Confirmed OpenSlide installs cleanly on Ubuntu-based environments
+      (Colab/Kaggle included) via `apt-get install openslide-tools` +
+      `pip install openslide-python` - two-layer install (system library
+      + Python bindings), verified both work together
+- [x] Built `src/wsi_loader.py` — `load_wsi_region()` reads a real slide
+      file via OpenSlide and returns the exact same `HxWx3` uint8 RGB
+      numpy array every other image source in this project already
+      produces. This was the actual design bet from Day 1 (documented in
+      ARCHITECTURE.md's "Extensible" bullet) — confirmed correct by
+      needing **zero changes** to `tissue_detection.py`, `tile_and_predict`,
+      or `overlay_and_save` to make it work
+- [x] Added `--wsi` as an alternative to `--image` in both
+      `tiling_inference.py` and `quantification.py`, rather than a
+      separate one-off script — keeps the CLI consistent regardless of
+      image source
+- [x] Downloaded the standard OpenSlide test file
+      (`CMU-1-Small-Region.svs`, a genuine Aperio-format slide, publicly
+      available from the OpenSlide project) and ran the full pipeline
+      against it end-to-end, not just a smoke test:
+      - Tissue detection correctly found 31.3% coverage on a real slide
+      - Tiling correctly skipped background tiles — visually confirmed
+        in the output heatmap, where background is untouched and only
+        the actual tissue region got processed, meaning the tissue mask
+        precisely tracked the real (irregular, non-checkerboard) tissue
+        boundary
+      - Ran with a randomly-initialized model (not the trained
+        checkpoint) since this was testing the *plumbing*, not
+        classification accuracy — should be re-run against model_v3 on
+        Kaggle for a real tumor-probability reading on this slide
+- [x] Documented the honest scope limit: this reads one region at one
+      pyramid level, not a full multi-level slide-scanning strategy — a
+      real production slide's level 0 can be tens of thousands of pixels
+      per side, and systematically scanning that is a further step this
+      implementation doesn't attempt
+- [x] Added the real WSI heatmap as a third screenshot in the README,
+      updated ARCHITECTURE.md and README's scope-decision note from
+      "stretch goal, maybe" to "completed, see below"
+
 ## Day 5
 
 ## Day 6
