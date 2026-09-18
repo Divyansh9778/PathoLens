@@ -133,6 +133,24 @@ source venv/bin/activate   # or venv\Scripts\activate on Windows
 pip install -r requirements.txt
 ```
 
+## Running the viewer (quick start)
+
+Once `outputs/model_v3.pth` and `outputs/synthetic_wsi.png` exist (see
+Results below for how they were produced), start the server with:
+
+```bash
+python scripts/run_demo.py
+```
+
+This formalizes the startup process used throughout development into one
+robust command: it kills any stale server already on the port (a real bug
+hit during development — a leftover process silently served outdated
+results while a new one failed to start), waits for the server by polling
+the actual API rather than guessing a fixed delay, and prints the exact
+follow-up command for exposing it publicly via a Cloudflare quick tunnel
+if needed. See `scripts/run_demo.py`'s docstring for the full list of
+problems this specifically fixes.
+
 ## 10-day plan with fallback checkpoints
 
 Each phase has a checkpoint: if you're behind schedule at that point, cut
