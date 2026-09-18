@@ -286,6 +286,51 @@ real OpenSlide/.svs support.
 
 ## Day 5
 
+Built `scripts/run_demo.py` to formalize the manual server-startup process
+(repeated by hand many times across earlier sessions) into one reliable
+command — and found a genuine bug in the process while testing it.
+
+- [x] Wrote `run_demo.py`: kills any stale process on the target port
+      first (fixes an earlier bug where a leftover server silently served
+      outdated results while a new one failed to bind), polls the real
+      API to confirm readiness instead of a fixed sleep, never reads
+      subprocess output in a blocking way (the earlier manual process hit
+      a hang + accidental process-kill from exactly this)
+- [x] **Found a real bug through testing, not assumption**: the server
+      process was reliably dying within 1-2 minutes of starting on
+      Kaggle, even though it started successfully and `poll()` initially
+      showed it alive. Confirmed via direct evidence (curl to localhost
+      failing with connection refused, process gone from `ps aux`) that
+      this wasn't the model/tunnel/network - the server process itself
+      was being killed
+- [x] Diagnosed the likely cause: Jupyter/IPython kernels can send a
+      signal to a cell's child process group when the cell finishes
+      executing, killing background processes that aren't explicitly
+      detached - even though `subprocess.Popen` normally survives past
+      its own cell
+- [x] Fixed with `start_new_session=True` on the server's `Popen` call,
+      detaching it into its own session immune to that signal. **Verified
+      the fix with evidence, not just "seems to work"**: ran a 90-second
+      alive-check after starting the server (the exact window it died in
+      twice before the fix) and confirmed it stayed up and kept serving
+      correct v3 results
+- [x] Learned a related lesson while debugging: don't add verification
+      delays between starting the tunnel and actually opening it in a
+      browser - each extra step burns into the same idle-timeout budget
+      that kills everything. Get from "start server" to "open the link"
+      in one continuous, fast sequence
+- [x] Confirmed the demo works end-to-end through this hardened path:
+      real v3 model, correct 71.51% tumor reading, live in a browser via
+      a fresh Cloudflare tunnel
+
+**Deliberately not pursued**: a permanent/always-on public URL. Free
+Cloudflare quick tunnels and Kaggle sessions are both inherently
+ephemeral - a stable link would need real hosting (a VM, a platform like
+Render/Railway), which is a materially different project. Decided the
+repeatable-on-demand recipe (`run_demo.py` + tunnel, documented in
+README) is sufficient for this project's purposes, rather than take on
+that scope for marginal benefit.
+
 ## Day 6
 
 ## Day 7
