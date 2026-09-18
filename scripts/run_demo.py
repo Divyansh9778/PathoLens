@@ -58,6 +58,14 @@ def start_server(repo_dir, port, packages_dir):
         env=env,
         stdout=subprocess.DEVNULL,   # never PIPE here - see module docstring
         stderr=subprocess.DEVNULL,
+        start_new_session=True,      # detach from the parent's process group/
+                                      # session, so the server survives even if
+                                      # the invoking Jupyter cell/kernel sends a
+                                      # signal to its process group when the
+                                      # cell finishes - observed in practice on
+                                      # Kaggle, where the server died within
+                                      # ~1-2 minutes of starting, right after
+                                      # the starting cell returned
     )
     return proc
 
